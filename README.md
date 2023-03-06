@@ -1,7 +1,7 @@
 # Multi-Armed-Bandit-on-Dosage-Prediction
 ## Introduction
 The repo is the assignment 4 from cs234 winter 2021 at Stanford University.  \
-This project is motivated by the challenge of Warfarin dosing, and considers a simplification of this important problem, using real data. The goal of this question is to explore the performance of multi-armed bandit algorithms to best predict the correct dosage of Warfarin for a patient without a trial-an-error procedure as typically employed.
+This project is motivated by the challenge of Warfarin dosing, and considers a simplification of this important problem, using real data. The goal of this question is to explore the performance of multi-armed bandit algorithms to best predict the correct dosage of Warfarin for a patient without a trial-an-error procedure as typically employed.\
 The problem is multi-class classification:
 * Low warfarin dose: under 21 mg/week
 * Medium warfarin dose: 21-49 mg/week
@@ -25,5 +25,5 @@ Implemented the Thompson Sampling for Contextual Bandits from Agrawal and Goyal 
 ![Screenshot](results/fraction_incorrect.png)
 
 ## Reference
-S. Agrawal and N. Goyal. Thompson sampling for contextual bandits with linear payoffs. In International Conference on Machine Learning, pages 127–135, 2013. \
-L. Li, W. Chu, J. Langford, and R. E. Schapire. A contextual-bandit approach to personalized news article recommendation. In Proceedings of the 19th international conference on World wide web, pages 661–670, 2010.
+1. S. Agrawal and N. Goyal. Thompson sampling for contextual bandits with linear payoffs. In International Conference on Machine Learning, pages 127–135, 2013. \
+2. L. Li, W. Chu, J. Langford, and R. E. Schapire. A contextual-bandit approach to personalized news article recommendation. In Proceedings of the 19th international conference on World wide web, pages 661–670, 2010.
