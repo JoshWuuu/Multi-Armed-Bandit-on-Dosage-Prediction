@@ -53,7 +53,7 @@ class FixedDosePolicy(StaticPolicy):
 		"""
 		#######################################################
 		#########   YOUR CODE HERE - ~1 lines.   #############
-		return ""
+		return "medium"
 		#######################################################
 		######### 
 
@@ -79,7 +79,9 @@ class ClinicalDosingPolicy(StaticPolicy):
 
 		#######################################################
 		#########   YOUR CODE HERE - ~2-10 lines.   #############
-		return ""
+		enzyme_inducer_status = x['Carbamazepine (Tegretol)'] or x['Phenytoin (Dilantin)'] or x['Rifampin or Rifampicin']
+		dose = 4.0376-0.2546*x['Age in decades']+0.0118*x['Height (cm)']+0.0134*x['Weight (kg)']-0.6752*x['Asian']+0.4060*x['Black']+0.0443*x['Unknown race']+1.2799*enzyme_inducer_status-0.5695*x['Amiodarone (Cordarone)']
+		return dose_class(dose**2)
 		#######################################################
 		######### 
 
@@ -105,11 +107,11 @@ class LinUCB(BanditPolicy):
 		"""
 		#######################################################
 		#########   YOUR CODE HERE - ~5 lines.   #############
-		self.n_arms = None
-		self.features = None
-		self.alpha = None
-		self.A = None
-		self.b = None
+		self.n_arms = n_arms
+		self.features = features
+		self.alpha = alpha
+		self.A = {arm: np.identity(len(features)) for arm in range(n_arms)}
+		self.b = {arm: np.zeros(len(features)) for arm in range(n_arms)}
 
 		#######################################################
 		#########          END YOUR CODE.          ############
@@ -129,7 +131,13 @@ class LinUCB(BanditPolicy):
 		"""
 		#######################################################
 		#########   YOUR CODE HERE - ~7 lines.   #############
-		return ""
+		dose_index = {0: 'low', 1: 'medium', 2: 'high'}
+		# each arm has a theta, which is a vector of length len(features)
+		theta = {arm: np.matmul(np.linalg.inv(self.A[arm]), (self.b[arm])) for arm in range(self.n_arms)}
+		x_array = np.array([x[feature] for feature in self.features])
+		p = {arm: np.matmul(theta[arm].T, x_array) + self.alpha*np.sqrt(np.matmul(np.matmul(x_array.T, np.linalg.inv(self.A[arm])), x_array)) for arm in range(self.n_arms)}
+		action = max(p, key=p.get)
+		return dose_index[action]
 		#######################################################
 		######### 
 
@@ -152,15 +160,19 @@ class LinUCB(BanditPolicy):
 		"""
 		#######################################################
 		#########   YOUR CODE HERE - ~4 lines.   #############
-
+		dose_index = {'low': 0, 'medium': 1, 'high': 2}
+		x_array = np.array([x[feature] for feature in self.features])
+		self.A[dose_index[a]] += np.outer(x_array, x_array.T)
+		self.b[dose_index[a]] += r*x_array
 		#######################################################
 		#########          END YOUR CODE.          ############
 
 # eGreedy Linear bandit
 class eGreedyLinB(LinUCB):
 	def __init__(self, n_arms, features, alpha=1.):
-		super(eGreedyLinB, self).__init__(n_arms, features, alpha=1.)
+		super().__init__(n_arms, features, alpha=1.)
 		self.time = 0  
+
 	def choose(self, x):
 		"""
 		Args:
@@ -174,13 +186,21 @@ class eGreedyLinB(LinUCB):
 		Then use an epsilion greedy algorithm to choose the action. 
 		Use the value of epsilon provided
 		"""
-		
+		# increase time step, decrease epsilon
 		self.time += 1 
 		epsilon = float(1./self.time)* self.alpha
 		#######################################################
 		#########   YOUR CODE HERE - ~7 lines.   #############
-		
-		return ""
+		dose_index = {0: 'low', 1: 'medium', 2: 'high'}
+		x_array = np.array([x[feature] for feature in self.features])
+		theta = {arm: np.matmul(np.linalg.inv(self.A[arm]), (self.b[arm])) for arm in range(self.n_arms)}
+		p = {arm: np.matmul(theta[arm], x_array) for arm in range(self.n_arms)}
+		action = 0
+		if np.random.random() < epsilon:
+			action = np.random.choice(self.n_arms)
+		else:
+			action = max(p, key=p.get)
+		return dose_index[action]
 		#######################################################
 		######### 
 
@@ -215,17 +235,18 @@ class ThomSampB(BanditPolicy):
 
 		#######################################################
 		#########   YOUR CODE HERE - ~6 lines.   #############
-		self.n_arms = None
-		self.features = None
+		self.n_arms = n_arms
+		self.features = features
 		#Simply use aplha for the v mentioned in the paper
 		self.v2 = alpha 
-		self.B = []
+		self.B = {arm: np.identity(len(features)) for arm in range(self.n_arms)}
 
 		#Variable used to keep track of data needed to compute mu
-		self.f = [] 
+		self.f = {arm: np.zeros(len(features)) for arm in range(self.n_arms)}
 
 		#You can actually compute mu from B and f at each time step. So you don't have to use this.
-		self.mu = []  
+		self.mu = {arm: np.zeros(len(features)) for arm in range(self.n_arms)}
+		# mu = inverse of B * f
 		#######################################################
 		#########          END YOUR CODE.          ############
 
@@ -248,7 +269,13 @@ class ThomSampB(BanditPolicy):
 
 		#######################################################
 		#########   YOUR CODE HERE - ~8 lines.   #############
-		return ""
+		dose_index = {0: 'low', 1: 'medium', 2: 'high'}
+		self.mu = {arm: np.matmul(np.linalg.inv(self.B[arm]), (self.f[arm])) for arm in range(self.n_arms)}
+		variance = {arm: self.v2 * np.linalg.inv(self.B[arm]) for arm in range(self.n_arms)}
+		self.mu_sample = {arm: np.random.multivariate_normal(self.mu[arm], variance[arm]) for arm in range(self.n_arms)}
+		x_array = np.array([x[feature] for feature in self.features])
+		arm_values = {arm: np.matmul(self.mu_sample[arm], x_array) for arm in range(self.n_arms)}
+		return dose_index[max(arm_values, key=arm_values.get)]
 		#######################################################
 		#########          END YOUR CODE.          ############
 
@@ -273,7 +300,10 @@ class ThomSampB(BanditPolicy):
 
 		#######################################################
 		#########   YOUR CODE HERE - ~6 lines.   #############
-
+		dose_index = {'low': 0, 'medium': 1, 'high': 2}
+		x_array = np.array([x[feature] for feature in self.features])
+		self.B[dose_index[a]] += np.outer(x_array, x_array)
+		self.f[dose_index[a]] += r * x_array
 		#######################################################
 		#########          END YOUR CODE.          ############
 
